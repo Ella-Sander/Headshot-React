@@ -7,6 +7,7 @@ const Icon = ({ name, size = 18 }) => {
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     tune: <><path d="M4 7h16M7 12h10m-7 5h4"/><circle cx="8" cy="7" r="1.5"/><circle cx="15" cy="12" r="1.5"/></>,
     heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/>,
+    instagram: <><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".7" fill="currentColor" stroke="none"/></>,
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     check: <><path d="m5 12 4 4L19 6"/></>,
     close: <><path d="m18 6-12 12M6 6l12 12"/></>,
@@ -33,9 +34,19 @@ function FilterChecks({ title, values, selected, onChange, name }) {
   </details>;
 }
 
+function PhotographerBrand({ photographer }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  const hasLogo = Boolean(photographer.logoUrl) && !logoFailed;
+  const monogram = photographer.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  return <div className={`card-image ${hasLogo ? 'official-brand-card' : 'neutral-profile'}`}>
+    {hasLogo ? <><div className={`official-logo-container ${photographer.logoKind === 'favicon' ? 'favicon-logo-container' : ''}`}><img className="official-logo" data-logo-kind={photographer.logoKind} src={photographer.logoUrl} alt={`${photographer.name} official website ${photographer.logoKind === 'favicon' ? 'icon' : 'branding'}`} loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoFailed(true)}/></div><span className="brand-source-label">{photographer.logoKind === 'favicon' ? 'OFFICIAL SITE ICON' : 'OFFICIAL SITE BRANDING'}</span></> : <><span className="neutral-edition">PORTRAIT / NYC</span><span className="neutral-monogram" aria-hidden="true">{monogram}</span><div className="neutral-copy"><span>{photographer.specialties[0] || 'Headshot photography'}</span><strong>Official logo<br/>unavailable</strong></div></>}
+    <div className="image-caption"><Icon name="pin" size={12}/>{photographer.neighborhood}, {photographer.city}</div>
+  </div>;
+}
+
 function App() {
   const [location, setLocation] = useState('New York, NY');
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const [selectedAreas, setSelectedAreas] = useState([]);
   const [selectedSpecialties, setSelectedSpecialties] = useState([]);
   const [selectedSettings, setSelectedSettings] = useState([]);
@@ -82,7 +93,7 @@ function App() {
     return list;
   }, [searchText, selectedAreas, selectedSpecialties, selectedSettings, selectedPackages, minimumPrice, maximumPrice, minimumImages, sort, savedOnly, favorites, priceIsFiltered]);
 
-  const pageSize = 20;
+  const pageSize = 21;
   const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
   const activePage = Math.min(currentPage, pageCount);
   const pageResults = results.slice((activePage - 1) * pageSize, activePage * pageSize);
@@ -109,6 +120,8 @@ function App() {
   const toggleCompare = id => setComparison(current => current.includes(id) ? current.filter(item => item !== id) : current.length < 3 ? [...current, id] : current);
   const compareProfiles = comparison.map(id => photographers.find(p => p.id === id)).filter(Boolean);
   const submitDirectoryProfile = event => { event.preventDefault(); setSubmissionReady(true); };
+
+  if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return <main className="directory-not-found"><a className="brand" href="/"><span className="brand-mark">p<span>.</span></span><span className="brand-word">portrait</span></a><p className="section-kicker">404 · PAGE NOT FOUND</p><h1>This page isn’t in the directory.</h1><p>Search the NYC-area headshot directory or return to all photographers.</p><label className="directory-search"><Icon name="search" size={17}/><input aria-label="Search photographers" value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="Search by photographer, location, or specialty"/></label>{searchText.trim() && <ul>{results.slice(0, 8).map(provider => <li key={provider.id}><a href={provider.source} target="_blank" rel="noopener noreferrer">{provider.name}</a> · {provider.neighborhood}, {provider.city}</li>)}</ul>}<a className="join-button" href="/new-york/headshot-photographers/">Browse all photographers <Icon name="arrow" size={15}/></a></main>;
 
   return <div className="app-shell">
     <header className="topbar"><a className="brand" href="#home" aria-label="Portrait home"><span className="brand-mark">p<span>.</span></span><span className="brand-word">portrait</span></a>
@@ -146,9 +159,10 @@ function App() {
             const shown = matching[0] || p.featuredPackage;
             const compareSelected = comparison.includes(p.id);
             return <article className="photographer-card editorial-card" key={p.id}>
-              <div className="card-image neutral-profile" aria-label={`No portfolio image provided for ${p.name}`}><span className="neutral-edition">PORTRAIT / NYC</span><span className="neutral-monogram" aria-hidden="true">{p.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span><div className="neutral-copy"><span>{p.specialties[0] || 'Headshot photography'}</span><strong>Portfolio image<br/>not provided</strong></div><div className="image-caption"><Icon name="pin" size={12}/>{p.neighborhood}, {p.city}</div></div>
+              <PhotographerBrand photographer={p}/>
               <div className="card-body"><div className="card-title-row"><div><h3>{p.name}</h3><span className="studio-name">{p.subtitle}</span></div><button type="button" className={`favorite-button inline-favorite ${favorites.includes(p.id) ? 'favorited' : ''}`} aria-label={`${favorites.includes(p.id) ? 'Remove' : 'Save'} ${p.name}`} aria-pressed={favorites.includes(p.id)} onClick={() => setFavorites(current => toggleValue(current, p.id))}><Icon name="heart" size={18}/></button></div>
                 <div className="card-tags">{p.specialties.slice(0, 3).map(tag => <span key={tag}>{tag}</span>)}</div>
+                {p.instagramUrl && <a className="instagram-link" href={p.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${p.name}'s Instagram profile`}><Icon name="instagram" size={14}/><span>Instagram</span><span aria-hidden="true">↗</span></a>}
                 <div className="package-preview"><div><span className="package-name">{shown.name}</span><span className="package-detail">{shown.summary}</span></div><strong>{shown.price == null ? 'Quote' : dollars(shown.price)}</strong></div>
                 <div className="card-meta"><span>{settingsOf(p).join(' · ')}</span><span>{shown.editedImages ? `${shown.editedImages} retouched listed` : 'Image count not listed'}</span></div>
                 <div className="card-footer"><div className="price"><strong>{p.startingPrice == null ? 'Not listed' : dollars(p.startingPrice)}</strong><span>{p.startingPrice == null ? 'price' : 'starting price'}</span></div><a className="view-button" href={p.source} target="_blank" rel="noopener noreferrer">View photographer <Icon name="arrow" size={15}/></a></div>
@@ -172,7 +186,7 @@ function App() {
 
     <dialog ref={submissionDialog} className="product-dialog submission-dialog" aria-labelledby="submission-heading" onClose={() => setSubmissionReady(false)}><div className="dialog-head"><div><span className="section-kicker">PHOTOGRAPHER SUBMISSION</span><h2 id="submission-heading">Suggest a profile</h2></div><button className="dialog-close" aria-label="Close submission form" onClick={() => submissionDialog.current?.close()}><Icon name="close"/></button></div>{submissionReady ? <div className="submission-status"><strong>Preview complete; nothing was sent.</strong><p>This directory currently has no submission backend. Your details have not been stored or transmitted.</p><button className="join-button" type="button" onClick={() => submissionDialog.current?.close()}>Close</button></div> : <form className="submission-form" onSubmit={submitDirectoryProfile}><p>Share public listing details for an NYC headshot photography service. Submissions need review before they can appear in the directory.</p><label>Photographer or studio name<input name="name" required autoComplete="organization"/></label><label>Website URL<input name="website" type="url" placeholder="https://" required/></label><label>Contact email<input name="email" type="email" required autoComplete="email"/></label><div className="submission-form-row"><label>Neighborhood<input name="area" placeholder="e.g. Astoria" required/></label><label>Starting price (optional)<input name="price" type="number" min="0" step="25" placeholder="Not listed"/></label></div><label>Specialty<textarea name="specialty" rows="2" placeholder="Actor, corporate, LinkedIn, team headshots…" required/></label><p className="submission-notice">This form is a local preview. It does not send, save, or publish your information.</p><button className="join-button" type="submit">Review submission <Icon name="arrow" size={15}/></button></form>}</dialog>
 
-    <footer className="footer"><a className="brand footer-brand" href="#home"><span className="brand-mark">p<span>.</span></span><span className="brand-word">portrait</span></a><span>NYC headshot photographer directory.</span><div><a href="#directory">Browse photographers</a><a href="#for-photographers" onClick={event => { event.preventDefault(); submissionDialog.current?.showModal(); }}>Suggest a profile</a><a href="#how-it-works">How it works</a></div><small>© 2026 Portrait. Photographer details are summarized for comparison and may change.</small></footer>
+    <footer className="footer"><a className="brand footer-brand" href="#home"><span className="brand-mark">p<span>.</span></span><span className="brand-word">portrait</span></a><span>NYC headshot photographer directory.</span><div><a href="#directory">Browse photographers</a><a href="/new-york/headshot-photographers/">Directory pages</a><a href="#for-photographers" onClick={event => { event.preventDefault(); submissionDialog.current?.showModal(); }}>Suggest a profile</a><a href="#how-it-works">How it works</a></div><small>© 2026 Portrait. Photographer details are summarized for comparison and may change.</small></footer>
   </div>;
 }
 
