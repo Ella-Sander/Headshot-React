@@ -43,6 +43,8 @@ function App() {
   const [maximumPrice, setMaximumPrice] = useState('');
   const [minimumImages, setMinimumImages] = useState(0);
   const [sort, setSort] = useState('Recommended');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('grid');
   const [favorites, setFavorites] = useState([]);
   const [savedOnly, setSavedOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -78,6 +80,14 @@ function App() {
     if (sort === 'Most package options') list = [...list].sort((a, b) => b.packages.length - a.packages.length);
     return list;
   }, [searchText, selectedAreas, selectedSpecialties, selectedSettings, selectedPackages, minimumPrice, maximumPrice, minimumImages, sort, savedOnly, favorites, priceIsFiltered]);
+
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
+  const activePage = Math.min(currentPage, pageCount);
+  const pageResults = results.slice((activePage - 1) * pageSize, activePage * pageSize);
+
+  useEffect(() => { setCurrentPage(1); }, [searchText, selectedAreas, selectedSpecialties, selectedSettings, selectedPackages, minimumPrice, maximumPrice, minimumImages, sort, savedOnly, favorites]);
+  useEffect(() => { if (currentPage > pageCount) setCurrentPage(pageCount); }, [currentPage, pageCount]);
 
   useEffect(() => {
     const canonical = document.querySelector('link[rel="canonical"]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'canonical' }));
@@ -124,9 +134,9 @@ function App() {
           <div className="filter-help"><span>i</span><div><strong>Check the source before booking.</strong><p>Rates and package details can change. Ask the photographer to confirm current terms.</p></div></div>
         </aside>
 
-        <div className="results"><div className="results-toolbar"><div className="result-count" aria-live="polite" aria-atomic="true"><strong>{results.length ? `${results.length} photographer${results.length === 1 ? '' : 's'} to compare` : 'No matching photographers'}</strong><span>NYC-area headshot services · details linked to original sources</span></div><div className="toolbar-actions"><button className="mobile-filter-button" onClick={() => setFiltersOpen(value => !value)} aria-expanded={filtersOpen}><Icon name="tune" size={16}/> Filters{filtersCount > 0 ? ` (${filtersCount})` : ''}</button><label className="sort-control"><span>Sort</span><select aria-label="Sort results" value={sort} onChange={event => setSort(event.target.value)}><option>Recommended</option><option>Price: low to high</option><option>Price: high to low</option><option>Alphabetical</option><option>Most edited images</option><option>Most package options</option></select></label></div></div>
+        <div className="results"><div className="results-toolbar"><div className="result-count" aria-live="polite" aria-atomic="true"><strong>{results.length ? `${results.length} photographer${results.length === 1 ? '' : 's'} to compare` : 'No matching photographers'}</strong><span>NYC-area headshot services · details linked to original sources</span></div><div className="toolbar-actions"><button className="mobile-filter-button" onClick={() => setFiltersOpen(value => !value)} aria-expanded={filtersOpen}><Icon name="tune" size={16}/> Filters{filtersCount > 0 ? ` (${filtersCount})` : ''}</button><div className="view-toggle" role="group" aria-label="Results view"><button type="button" className={viewMode === 'grid' ? 'active' : ''} aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><span className="grid-view-icon" aria-hidden="true">▦</span></button><button type="button" className={viewMode === 'list' ? 'active' : ''} aria-label="List view" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><span className="list-view-icon" aria-hidden="true">☰</span></button></div><label className="sort-control"><span>Sort</span><select aria-label="Sort results" value={sort} onChange={event => setSort(event.target.value)}><option>Recommended</option><option>Price: low to high</option><option>Price: high to low</option><option>Alphabetical</option><option>Most edited images</option><option>Most package options</option></select></label></div></div>
           <label className="directory-search"><Icon name="search" size={17}/><span className="sr-only">Search name, neighborhood, specialty, or package</span><input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="Search name, neighborhood, specialty, or package"/><span>⌘ K</span></label>
-          {results.length ? <div className="cards-grid">{results.map(p => {
+          {results.length ? <div className={`cards-grid ${viewMode === 'list' ? 'list-view' : ''}`}>{pageResults.map(p => {
             const matching = p.packages.filter(pkg => {
               const unknown = pkg.price === null || pkg.price === undefined;
               const budgetMatches = unknown ? !priceIsFiltered : (minimumPrice === '' || pkg.price >= Number(minimumPrice)) && (maximumPrice === '' || pkg.price <= Number(maximumPrice));
@@ -145,6 +155,7 @@ function App() {
               </div>
             </article>;
           })}</div> : <div className="empty-state"><span>0</span><h3>No profiles match those filters.</h3><p>Clear a filter or broaden your search to explore the full New York City directory.</p><button type="button" onClick={resetFilters}>Clear filters <Icon name="arrow" size={15}/></button></div>}
+          {results.length > 0 && <nav className="pagination" aria-label="Photographer results pages"><span className="pagination-summary">Showing {(activePage - 1) * pageSize + 1}–{Math.min(activePage * pageSize, results.length)} of {results.length}</span><div className="pagination-controls"><button type="button" className="page-button page-direction" onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={activePage === 1} aria-label="Previous page">‹ <span>Previous</span></button>{Array.from({ length: pageCount }, (_, index) => index + 1).map(page => <button type="button" key={page} className={`page-button ${activePage === page ? 'current' : ''}`} aria-label={`Page ${page}`} aria-current={activePage === page ? 'page' : undefined} onClick={() => setCurrentPage(page)}>{page}</button>)}<button type="button" className="page-button page-direction" onClick={() => setCurrentPage(page => Math.min(pageCount, page + 1))} disabled={activePage === pageCount} aria-label="Next page"><span>Next</span> ›</button></div></nav>}
           <div className="results-footnote">Portrait is a discovery and comparison directory. Photographer information is summarized from public pages and directories; confirm current details directly.</div>
         </div></div>
       </section>
