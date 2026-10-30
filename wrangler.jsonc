@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "headshots-directory",
+  "name": "headshot-react",
+  "account_id": "735c5b7e1a6013843699cc6e6fb4b5f6",
   "compatibility_date": "2026-10-23",
   "observability": {
     "enabled": true
