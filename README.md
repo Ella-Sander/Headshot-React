@@ -1,6 +1,6 @@
-# Portrait Finder
+# Headshot Scout
 
-Portrait Finder is a searchable directory of headshot photographers and studios serving New York City and nearby areas. The app is built with React and Vite and deployed as static assets with Cloudflare Workers.
+Headshot Scout is a searchable directory of headshot photographers and studios serving New York City and nearby areas. The app is built with React and Vite and deployed as static assets with Cloudflare Workers.
 
 ## Features
 
