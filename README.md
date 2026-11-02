@@ -13,7 +13,7 @@ Headshot Scout is a searchable directory of headshot photographers and studios s
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22 or newer
 - npm
 - A Cloudflare account for deployment
 
