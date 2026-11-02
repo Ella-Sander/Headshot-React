@@ -33,14 +33,14 @@ Set `SITE_URL` to the public site origin before building so canonical URLs and t
 PowerShell:
 
 ```powershell
-$env:SITE_URL = "https://your-domain.example"
+$env:SITE_URL = "https://headshotscout.com"
 npm run build
 ```
 
 Bash:
 
 ```sh
-SITE_URL="https://your-domain.example" npm run build
+SITE_URL="https://headshotscout.com" npm run build
 ```
 
 The build writes the Vite app and generated SEO pages to `dist/`. If `SITE_URL` is omitted, the generator warns and uses `http://localhost:4173`; set the production URL when building for deployment.
@@ -60,17 +60,19 @@ Authenticate Wrangler with Cloudflare, then build with the production domain and
 PowerShell:
 
 ```powershell
-$env:SITE_URL = "https://your-domain.example"
+$env:SITE_URL = "https://headshotscout.com"
 npm run deploy
 ```
 
 Bash:
 
 ```sh
-SITE_URL="https://your-domain.example" npm run deploy
+SITE_URL="https://headshotscout.com" npm run deploy
 ```
 
-For Cloudflare Git-based deployments, configure the build command as `npm run build`, the output directory as `dist`, and provide `SITE_URL` as a build environment variable. Attach the custom domain to the existing `headshots-directory` Worker in Cloudflare after the deployment is available.
+The Cloudflare deployment workflow builds with `SITE_URL=https://headshotscout.com` and deploys the `headshot-react` Worker. Add a GitHub Actions secret named `CLOUDFLARE_API_TOKEN` with `Workers Scripts Write` and `Workers Routes Write` access scoped to this account and the `headshotscout.com` zone. The Wrangler configuration attaches `headshotscout.com` and `www.headshotscout.com` as custom domains while keeping the `workers.dev` address available for preview.
+
+After the first production deployment, add `https://headshotscout.com/sitemap.xml` in Google Search Console and verify the domain property with the DNS record Google provides. Indexing and ranking take time and depend on useful, accurate listings and external discovery; no site can guarantee a top position.
 
 ## Photographer data
 

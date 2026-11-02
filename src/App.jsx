@@ -103,14 +103,7 @@ function App() {
 
   useEffect(() => {
     const canonical = document.querySelector('link[rel="canonical"]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'canonical' }));
-    canonical.href = `${window.location.origin}${window.location.pathname}`;
-    const itemList = {
-      '@context': 'https://schema.org', '@type': 'ItemList', name: 'NYC Headshot Photographers', numberOfItems: photographers.length,
-      itemListElement: photographers.map((p, index) => ({ '@type': 'ListItem', position: index + 1, name: p.name, url: p.source })),
-    };
-    let schema = document.getElementById('portrait-directory-schema');
-    if (!schema) { schema = document.createElement('script'); schema.id = 'portrait-directory-schema'; schema.type = 'application/ld+json'; document.head.appendChild(schema); }
-    schema.textContent = JSON.stringify(itemList);
+    if (!canonical.getAttribute('href')) canonical.href = `https://headshotscout.com${window.location.pathname}`;
   }, []);
 
   const resetFilters = () => {
@@ -130,7 +123,7 @@ function App() {
     </header>
 
     <main id="home">
-      <section className="hero editorial-hero"><div className="hero-content"><div className="eyebrow"><span className="eyebrow-dot"/> A NEW YORK CITY HEADSHOT DIRECTORY</div><h1>Find your next<br/><em>headshot photographer.</em></h1><p className="hero-copy">A straightforward way for actors and professionals to compare NYC photographers, packages, specialties, and published rates.</p>
+      <section className="hero editorial-hero"><div className="hero-content"><div className="eyebrow"><span className="eyebrow-dot"/> A NEW YORK CITY HEADSHOT DIRECTORY</div><h1>Find a NYC<br/><em>headshot photographer.</em></h1><p className="hero-copy">Compare New York City photographers for actor, LinkedIn, business, and team headshots. Explore specialties, neighborhoods, session options, and published prices.</p>
         <form className="search-box" onSubmit={event => { event.preventDefault(); setSearchText(location.trim() === 'New York, NY' ? searchText : location); document.getElementById('directory')?.scrollIntoView({ behavior: 'smooth' }); }}><label className="search-field location-field"><Icon name="pin"/><span className="field-wrap"><span className="field-label">CITY OR NEIGHBORHOOD</span><input aria-label="City or neighborhood" value={location} onChange={event => setLocation(event.target.value)} placeholder="New York, Brooklyn, Astoria"/></span></label><button className="search-submit" type="submit"><Icon name="search" size={19}/><span>Browse photographers</span></button></form>
         <div className="hero-note"><span><Icon name="check" size={14}/> {photographers.length} NYC-area listings</span><i/><span>Published prices where available</span><i/><span>Direct links to photographer sites</span></div>
       </div><aside className="hero-editorial-note"><span className="hero-note-index">01 / THE DIRECTORY</span><p>Find a photographer whose work, process, and price fit the headshot you need.</p><a href="#directory">Browse the directory <Icon name="arrow" size={15}/></a><div className="hero-note-rule"/><span className="hero-note-foot">NEW YORK CITY · ACTOR & PROFESSIONAL HEADSHOTS</span></aside>
