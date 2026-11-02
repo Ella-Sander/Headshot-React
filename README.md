@@ -43,7 +43,7 @@ Bash:
 SITE_URL="https://headshotscout.com" npm run build
 ```
 
-The build writes the Vite app and generated SEO pages to `dist/`. If `SITE_URL` is omitted, the generator warns and uses `http://localhost:4173`; set the production URL when building for deployment.
+The build writes the Vite app and generated SEO pages to `dist/`. If `SITE_URL` is omitted, the generator uses `https://headshotscout.com` so production canonical URLs and sitemap entries still use the correct domain.
 
 ## Preview with Cloudflare
 

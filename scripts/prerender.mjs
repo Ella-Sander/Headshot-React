@@ -8,14 +8,11 @@ const dist = path.resolve(here, '../dist');
 const directoryPath = '/new-york/headshot-photographers/';
 const pageSize = 21;
 const configuredSiteUrl = process.env.SITE_URL || process.env.PUBLIC_SITE_URL;
-const parsedSiteUrl = new URL(configuredSiteUrl || 'http://localhost:4173');
+const parsedSiteUrl = new URL(configuredSiteUrl || 'https://headshotscout.com');
 if (!['https:', 'http:'].includes(parsedSiteUrl.protocol) || parsedSiteUrl.username || parsedSiteUrl.password || parsedSiteUrl.pathname !== '/' || parsedSiteUrl.search || parsedSiteUrl.hash) {
   throw new Error('SITE_URL must be the public site origin only, for example https://headshotscout.com');
 }
 const siteUrl = parsedSiteUrl.origin;
-if (!configuredSiteUrl) {
-  console.warn('SITE_URL is unset; prerendered canonical URLs use the local preview origin. Set SITE_URL to the public production origin before deploying.');
-}
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const cleanText = value => String(value ?? '').replace(/\s+/g, ' ').trim();
