@@ -3,6 +3,7 @@
   "name": "headshot-react",
   "account_id": "735c5b7e1a6013843699cc6e6fb4b5f6",
   "compatibility_date": "2026-10-23",
+  "main": "src/worker.js",
   "workers_dev": true,
   "routes": [
     { "pattern": "headshotscout.com", "custom_domain": true },
@@ -13,7 +14,17 @@
   },
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "SUBMISSIONS_DB",
+      "database_name": "headshot-scout-submissions",
+      "database_id": "b4a3e8d5-b305-428c-9981-bb6649c6dd98",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

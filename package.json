@@ -9,6 +9,7 @@
   "scripts": {
     "start": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/prerender.mjs",
+    "test": "node --test",
     "deploy": "npm run build && wrangler deploy",
     "preview": "npm run build && wrangler dev"
   },

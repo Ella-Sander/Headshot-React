@@ -26,6 +26,14 @@ const packageOptions = unique(photographers.flatMap(p => p.packages.flatMap(pkg 
 const matchesSelected = (selected, available) => !selected.length || selected.some(value => available.includes(value));
 const toggleValue = (values, value) => values.includes(value) ? values.filter(item => item !== value) : [...values, value];
 const dollars = value => `$${Number(value).toLocaleString()}`;
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+}
 
 function FilterChecks({ title, values, selected, onChange, name }) {
   return <details className="filter-group filter-details">
@@ -39,7 +47,7 @@ function PhotographerBrand({ photographer }) {
   const hasLogo = Boolean(photographer.logoUrl) && !logoFailed;
   const monogram = photographer.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
   return <div className={`card-image ${hasLogo ? 'official-brand-card' : 'neutral-profile'}`}>
-    {hasLogo ? <><div className={`official-logo-container ${photographer.logoKind === 'favicon' ? 'favicon-logo-container' : ''}`}><img className="official-logo" data-logo-kind={photographer.logoKind} src={photographer.logoUrl} alt={`${photographer.name} official website ${photographer.logoKind === 'favicon' ? 'icon' : 'branding'}`} loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoFailed(true)}/></div><span className="brand-source-label">{photographer.logoKind === 'favicon' ? 'OFFICIAL SITE ICON' : 'OFFICIAL SITE BRANDING'}</span></> : <><span className="neutral-edition">HEADSHOT SCOUT / NYC</span><span className="neutral-monogram" aria-hidden="true">{monogram}</span><div className="neutral-copy"><span>{photographer.specialties[0] || 'Headshot photography'}</span><strong>Official logo<br/>unavailable</strong></div></>}
+    {hasLogo ? <div className={`official-logo-container ${photographer.logoKind === 'favicon' ? 'favicon-logo-container' : ''}`}><img className="official-logo" data-logo-kind={photographer.logoKind} src={photographer.logoUrl} alt={`${photographer.name} official website ${photographer.logoKind === 'favicon' ? 'icon' : 'branding'}`} loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoFailed(true)}/></div> : <><span className="neutral-edition">HEADSHOT SCOUT / NYC</span><span className="neutral-monogram" aria-hidden="true">{monogram}</span><div className="neutral-copy"><span>{photographer.specialties[0] || 'Headshot photography'}</span><strong>Official logo<br/>unavailable</strong></div></>}
     <div className="image-caption"><Icon name="pin" size={12}/>{photographer.neighborhood}, {photographer.city}</div>
   </div>;
 }
@@ -62,6 +70,9 @@ function App() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [comparison, setComparison] = useState([]);
   const [submissionReady, setSubmissionReady] = useState(false);
+  const [submissionNotificationPending, setSubmissionNotificationPending] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
+  const [submissionSending, setSubmissionSending] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const comparisonDialog = useRef(null);
   const submissionDialog = useRef(null);
@@ -112,7 +123,43 @@ function App() {
   };
   const toggleCompare = id => setComparison(current => current.includes(id) ? current.filter(item => item !== id) : current.length < 3 ? [...current, id] : current);
   const compareProfiles = comparison.map(id => photographers.find(p => p.id === id)).filter(Boolean);
-  const submitDirectoryProfile = event => { event.preventDefault(); setSubmissionReady(true); };
+  const submitDirectoryProfile = async event => {
+    event.preventDefault();
+    setSubmissionError('');
+    setSubmissionSending(true);
+    const form = event.currentTarget;
+    const values = Object.fromEntries(new FormData(form).entries());
+    delete values.logo;
+    try {
+      const logoFile = form.elements.namedItem('logo')?.files?.[0];
+      if (logoFile) {
+        if (logoFile.size > 1_000_000) {
+          setSubmissionError('Logo images must be 1 MB or smaller.');
+          return;
+        }
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(logoFile.type)) {
+          setSubmissionError('Choose a PNG, JPG, or WebP logo image.');
+          return;
+        }
+        values.logo = { filename: logoFile.name, contentType: logoFile.type, data: await fileToBase64(logoFile) };
+      }
+      const response = await fetch('/api/profile-submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || 'We could not send your submission. Please try again later.');
+      }
+      setSubmissionNotificationPending(result.notification !== 'sent');
+      setSubmissionReady(true);
+    } catch (error) {
+      setSubmissionError(error.message || 'We could not send your submission. Please try again later.');
+    } finally {
+      setSubmissionSending(false);
+    }
+  };
 
   if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return <main className="directory-not-found"><a className="brand" href="/"><span className="brand-mark">h<span>.</span></span><span className="brand-word">Headshot Scout</span></a><p className="section-kicker">404 · PAGE NOT FOUND</p><h1>This page isn’t in the directory.</h1><p>Search the NYC-area headshot directory or return to all photographers.</p><label className="directory-search"><Icon name="search" size={17}/><input aria-label="Search photographers" value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="Search by photographer, location, or specialty"/></label>{searchText.trim() && <ul>{results.slice(0, 8).map(provider => <li key={provider.id}><a href={provider.source} target="_blank" rel="noopener noreferrer">{provider.name}</a> · {provider.neighborhood}, {provider.city}</li>)}</ul>}<a className="join-button" href="/new-york/headshot-photographers/">Browse all photographers <Icon name="arrow" size={15}/></a></main>;
 
@@ -177,7 +224,7 @@ function App() {
 
     <dialog ref={comparisonDialog} className="product-dialog compare-dialog" aria-labelledby="compare-heading"><div className="dialog-head"><div><span className="section-kicker">SIDE BY SIDE</span><h2 id="compare-heading">Compare photographers</h2></div><button className="dialog-close" aria-label="Close comparison" onClick={() => comparisonDialog.current?.close()}><Icon name="close"/></button></div>{compareProfiles.length < 2 ? <p>Select at least two profiles to compare.</p> : <div className="compare-table-wrap"><table className="compare-table"><thead><tr><th scope="col">Details</th>{compareProfiles.map(p => <th scope="col" key={p.id}>{p.name}</th>)}</tr></thead><tbody><tr><th scope="row">Area</th>{compareProfiles.map(p => <td key={p.id}>{p.neighborhood}, {p.city}</td>)}</tr><tr><th scope="row">Specialty</th>{compareProfiles.map(p => <td key={p.id}>{p.specialties.join(', ')}</td>)}</tr><tr><th scope="row">Starting price</th>{compareProfiles.map(p => <td key={p.id}>{p.startingPrice == null ? 'Not listed' : dollars(p.startingPrice)}</td>)}</tr><tr><th scope="row">Session setting</th>{compareProfiles.map(p => <td key={p.id}>{p.settings.join(', ')}</td>)}</tr><tr><th scope="row">Packages</th>{compareProfiles.map(p => <td key={p.id}>{p.packages.map(pkg => `${pkg.name}: ${pkg.price == null ? 'quote' : dollars(pkg.price)} · ${pkg.summary}`).join('\n\n')}</td>)}</tr><tr><th scope="row">Website</th>{compareProfiles.map(p => <td key={p.id}><a href={p.source} target="_blank" rel="noopener noreferrer">Visit photographer site ↗</a></td>)}</tr></tbody></table></div>}<div className="dialog-footer"><button type="button" className="join-button" onClick={() => comparisonDialog.current?.close()}>Done</button></div></dialog>
 
-    <dialog ref={submissionDialog} className="product-dialog submission-dialog" aria-labelledby="submission-heading" onClose={() => setSubmissionReady(false)}><div className="dialog-head"><div><span className="section-kicker">PHOTOGRAPHER SUBMISSION</span><h2 id="submission-heading">Suggest a profile</h2></div><button className="dialog-close" aria-label="Close submission form" onClick={() => submissionDialog.current?.close()}><Icon name="close"/></button></div>{submissionReady ? <div className="submission-status"><strong>Preview complete; nothing was sent.</strong><p>This directory currently has no submission backend. Your details have not been stored or transmitted.</p><button className="join-button" type="button" onClick={() => submissionDialog.current?.close()}>Close</button></div> : <form className="submission-form" onSubmit={submitDirectoryProfile}><p>Share public listing details for an NYC headshot photography service. Submissions need review before they can appear in the directory.</p><label>Photographer or studio name<input name="name" required autoComplete="organization"/></label><label>Website URL<input name="website" type="url" placeholder="https://" required/></label><label>Contact email<input name="email" type="email" required autoComplete="email"/></label><div className="submission-form-row"><label>Neighborhood<input name="area" placeholder="e.g. Astoria" required/></label><label>Starting price (optional)<input name="price" type="number" min="0" step="25" placeholder="Not listed"/></label></div><label>Specialty<textarea name="specialty" rows="2" placeholder="Actor, corporate, LinkedIn, team headshots…" required/></label><p className="submission-notice">This form is a local preview. It does not send, save, or publish your information.</p><button className="join-button" type="submit">Review submission <Icon name="arrow" size={15}/></button></form>}</dialog>
+    <dialog ref={submissionDialog} className="product-dialog submission-dialog" aria-labelledby="submission-heading" onClose={() => { setSubmissionReady(false); setSubmissionError(''); setSubmissionNotificationPending(false); }}><div className="dialog-head"><div><span className="section-kicker">PHOTOGRAPHER SUBMISSION</span><h2 id="submission-heading">Suggest a profile</h2></div><button className="dialog-close" aria-label="Close submission form" onClick={() => submissionDialog.current?.close()}><Icon name="close"/></button></div>{submissionReady ? <div className="submission-status"><strong>Submission saved for review.</strong><p>{submissionNotificationPending ? 'Your profile was saved, but the email notification could not be delivered yet.' : 'Thanks. Your profile details were emailed to Headshot Scout. Submissions are reviewed before publication.'}</p><button className="join-button" type="button" onClick={() => submissionDialog.current?.close()}>Close</button></div> : <form className="submission-form" onSubmit={submitDirectoryProfile}><p>Share public listing details for an NYC headshot photography service. Submissions need review before they can appear in the directory.</p><label>Photographer or studio name<input name="name" required autoComplete="organization"/></label><label>Website URL<input name="website" type="url" placeholder="https://" required/></label><label>Contact email<input name="email" type="email" required autoComplete="email"/></label><div className="submission-form-row"><label>Neighborhood<input name="area" placeholder="e.g. Astoria" required/></label><label>Starting price (optional)<input name="price" type="number" min="0" step="25" placeholder="Not listed"/></label></div><label>Specialty<textarea name="specialty" rows="2" placeholder="Actor, corporate, LinkedIn, team headshots…" required/></label><label className="submission-logo-field">Logo image <span>(optional)</span><input name="logo" type="file" accept="image/png,image/jpeg,image/webp"/><small>PNG, JPG, or WebP · up to 1 MB</small></label>{submissionError && <p className="submission-notice" role="alert">{submissionError}</p>}<p className="submission-notice">Your submission and any attached logo will be emailed to Headshot Scout for review. It will not be published automatically.</p><button className="join-button" type="submit" disabled={submissionSending}>{submissionSending ? 'Sending…' : 'Submit profile'} <Icon name="arrow" size={15}/></button></form>}</dialog>
 
     <footer className="footer"><a className="brand footer-brand" href="#home"><span className="brand-mark">h<span>.</span></span><span className="brand-word">Headshot Scout</span></a><span>NYC headshot photographer directory.</span><div><a href="#directory">Browse photographers</a><a href="/new-york/headshot-photographers/">Directory pages</a><a href="#for-photographers" onClick={event => { event.preventDefault(); submissionDialog.current?.showModal(); }}>Suggest a profile</a><a href="#how-it-works">How it works</a></div><small>© 2026 Headshot Scout. Photographer details are summarized for comparison and may change.</small></footer>
   </div>;
